@@ -1,8 +1,9 @@
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, jsonify
 import RPi.GPIO as GPIO
+from illuminometer import Illuminometer
 
 app = Flask(__name__)
-lightmeter = Illminometer()
+lightmeter = Illuminometer()
 
 # HTML template
 html = """
