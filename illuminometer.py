@@ -11,7 +11,7 @@ class Illuminometer:
         self.camera.start()
 
     def get(self):
-        frame = picam2.capture_array()
+        frame = self.camera.capture_array()
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         average_intensity = np.mean(frame)
         return average_intensity
