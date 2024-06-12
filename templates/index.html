@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LED Control and Light Meter</title>
+    <script>
+        function getIlluminance() {
+            fetch('/illuminance')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('illuminance').innerText = data.illuminance;
+                });
+        }
+        setInterval(getIlluminance, 100);
+        window.onload = getIlluminance;
+    </script>
+</head>
+<body>
+    <h1>Control LED</h1>
+    <form action="/on">
+        <button type="submit">Turn ON</button>
+    </form>
+    <form action="/off">
+        <button type="submit">Turn OFF</button>
+    </form>
+    <h2>Current Illuminance: <span id="illuminance">Loading...</span> lux</h2>
+</body>
+</html>
+
