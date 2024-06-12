@@ -1,10 +1,16 @@
 from flask import Flask, render_template, jsonify
 import RPi.GPIO as GPIO
+import threading
+
 from illuminometer import Illuminometer
+from stepmotor import StepperMotor
 
 app = Flask(__name__)
 lightmeter = Illuminometer()
+curtain = StepperMotor()
 html = "index.html"
+
+curtain_lock = threading.Lock()
 
 @app.route('/')
 def index():
@@ -26,6 +32,12 @@ def led_off():
 def get_illuminance():
     illuminance = lightmeter.get()
     return jsonify({'illuminance': illuminance})
+
+@app.route('/curtain/<int:state>', methods=['POST'])
+def set_curtain_state(state):
+    with curtain_lock:
+        curtain.to_state(state)
+    return jsonify({'state': curtain.get_state()})
 
 if __name__ == '__main__':
     try:

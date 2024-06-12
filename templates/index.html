@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>LED Control and Light Meter</title>
+    <title>The Light</title>
     <script>
         function getIlluminance() {
             fetch('/illuminance')
@@ -10,7 +10,16 @@
                     document.getElementById('illuminance').innerText = data.illuminance;
                 });
         }
-        setInterval(getIlluminance, 100);
+
+	function setCurtainState(value) {
+            fetch('/curtain/' + value, {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('curtainState').innerText = data.state;
+                });
+        }
+
+        setInterval(getIlluminance, 10 * 1000);
         window.onload = getIlluminance;
     </script>
 </head>
@@ -23,6 +32,8 @@
         <button type="submit">Turn OFF</button>
     </form>
     <h2>Current Illuminance: <span id="illuminance">Loading...</span> lux</h2>
+    <h1>Curtain</h1>
+    <input type="range" min="0" max="10" value="0" id="CurtainSlider" oninput="setCurtainState(this.value)">
+    <p>Curtain State: <span id="curtainState">0</span></p>
 </body>
 </html>
-
