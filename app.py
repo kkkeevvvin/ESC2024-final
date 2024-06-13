@@ -4,8 +4,10 @@ import threading
 
 from illuminometer import Illuminometer
 from stepmotor import StepperMotor
+from led import LED
 
 app = Flask(__name__)
+led = LED(32)
 lightmeter = Illuminometer()
 curtain = StepperMotor()
 html = "index.html"
@@ -18,13 +20,13 @@ def index():
 
 @app.route('/on')
 def led_on():
-    # GPIO.output(LED_PIN, GPIO.HIGH)
+    led.glow(100)
     print("led on")
     return render_template(html)
 
 @app.route('/off')
 def led_off():
-    # GPIO.output(LED_PIN, GPIO.LOW)
+    led.glow(0)
     print("led off")
     return render_template(html)
 
