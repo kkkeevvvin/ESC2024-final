@@ -226,7 +226,7 @@ def lightRegulate(command:str) -> bool:
             with led_lock:
                 user_control = False
                 brightness = illumi_to_bright(lightmeter.get())
-                led.glow(brightness)
+                led.glow(int(brightness * alarmclock.getLightFactor()))
         except:
             print("[warning] [voice control] action: \033[1;31;40mswitch mode fail\033[0m")
 
