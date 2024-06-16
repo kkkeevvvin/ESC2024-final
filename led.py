@@ -1,14 +1,12 @@
 import RPi.GPIO as GPIO
 import time
-import os
 
 class LED:
     def __init__(self, pin:int=12, freq:int=100) -> None:
-        GPIO.setmode(GPIO.BOARD)
         self.pin = pin
+        GPIO.setmode(GPIO.BOARD)
         GPIO.setup(pin, GPIO.OUT)
         self.freq = freq
-
         self.light = GPIO.PWM(pin, freq)
         print("[info] [led] initialized")
 
