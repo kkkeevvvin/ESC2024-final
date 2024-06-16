@@ -11,7 +11,25 @@
                 });
         }
 
-	function setCurtainState(value) {
+        function getLedBrightness() {
+            fetch('/brightness')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('brightness').innerText = data.brightness;
+                    document.getElementById('brightnessSlider').value = data.brightness
+                });
+        }
+
+        function setLedBrightness(value) {
+            fetch('/setbrightness/' + value, {method: 'POST'})
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('brightness').innerText = data.brightness;
+                    document.getElementById('brightnessSlider').value = data.brightness
+                });
+        }
+
+	    function setCurtainState(value) {
             fetch('/curtain/' + value, {method: 'POST'})
                 .then(response => response.json())
                 .then(data => {
@@ -19,19 +37,97 @@
                 });
         }
 
+        function getClockState() {
+            fetch('/clockstate')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('clockState').innerText = data.clockstate;
+                });
+        }
+
+        function getClockSleepTIme() {
+            fetch('/sleeptime')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('sleepTimeVal').innerText = data.sleeptime;
+                });
+        }
+
+        function getClockWakeTIme() {
+            fetch('/waketime')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('wakeTimeVal').innerText = data.waketime;
+                });
+        }
+
+        function getUserControlState() {
+            fetch('/usercontrol')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('userState').innerText = data.usercontrol;
+                });
+        }
+
         setInterval(getIlluminance, 10 * 1000);
-        window.onload = getIlluminance;
+        setInterval(getLedBrightness, 10000)
+        setInterval(getClockState, 10000)
+        setInterval(getClockSleepTIme, 10000)
+        setInterval(getClockWakeTIme, 10000)
+        setInterval(getUserControlState, 10000)
+        window.onload = function() {
+            getIlluminance();
+            getLedBrightness();
+            getClockState();
+            getClockSleepTIme();
+            getClockWakeTIme();
+            getUserControlState();
+        };
     </script>
 </head>
 <body>
-    <h1>Control LED</h1>
+    <h1>Control LED: <span id="userState"></span></h1>
     <form action="/on">
         <button type="submit">Turn ON</button>
     </form>
     <form action="/off">
         <button type="submit">Turn OFF</button>
     </form>
+    <form action="/auto">
+        <button type="submit">Auto Mode</button>
+    </form>
+    <form action="setbrightness">
+        <input type="range" min="0" max="100" id="brightnessSlider" onchange="setLedBrightness(this.value)">
+    </form>
+    <!--
+    <form action="/up">
+        <button type="submit">Up</button>
+    </form>
+    <form action="/down">
+        <button type="submit">Down</button>
+    </form>
+    -->
     <h2>Current Illuminance: <span id="illuminance">Loading...</span> lux</h2>
+    <h2>Current LED Brightness: <span id="brightness">Loading...</span></h2>
+    <hr>
+    <h1>Alarm Clock: <span id="clockState"></span></h1>
+    <form action="/clockon">
+        <button type="submit">Clock On</button>
+    </form>
+    <form action="/clockoff">
+        <button type="submit">Clock Off</button>
+    </form>
+    <form id="sleepTime" action="/sleep" method="post">
+        <input type="time" name="time">
+        <button type="submit">set</button>
+        Sleep Time: <span id="sleepTimeVal"></span></input>
+    </form>
+    <form id="wakeTime" action="/wake" method="post">
+        <input type="time" name="time">
+        <button type="submit">set</button>
+        Wake Time: <span id="wakeTimeVal"></span></input>
+    </form>
+    <hr>
     <h1>Curtain</h1>
     <input type="range" min="0" max="10" value="0" id="CurtainSlider" oninput="setCurtainState(this.value)">
     <p>Curtain State: <span id="curtainState">0</span></p>

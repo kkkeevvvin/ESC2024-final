@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import RPi.GPIO as GPIO
 import threading
 import time
@@ -7,11 +7,13 @@ from illuminometer import Illuminometer
 from stepmotor import StepperMotor
 from led import LED
 from STT import VoiceControl
+from alarmclock import AlarmClock
 
 app = Flask(__name__)
 led = LED(32)
 lightmeter = Illuminometer()
 curtain = StepperMotor()
+alarmclock = AlarmClock(8)
 html = "index.html"
 
 curtain_lock = threading.Lock()
@@ -27,8 +29,10 @@ def index():
 @app.route('/on')
 def led_on():
     global user_control
+    global brightness
     with led_lock:
-        led.glow(100)
+        brightness = 100
+        led.glow(brightness)
         user_control = True
     print("led on")
     return render_template(html)
@@ -36,16 +40,148 @@ def led_on():
 @app.route('/off')
 def led_off():
     global user_control
+    global brightness
     with led_lock:
-        led.glow(0)
+        brightness = 0
+        led.glow(brightness)
         user_control = True
     print("led off")
     return render_template(html)
+
+@app.route('/auto')
+def led_auto():
+    global user_control
+    global brightness
+    with led_lock:
+        user_control = False
+        brightness = illumi_to_bright(lightmeter.get())
+        led.glow(brightness)
+    print("led off")
+    return render_template(html)
+
+"""
+@app.route('/up')
+def led_incr_bright():
+    global user_control
+    global brightness
+    with led_lock:
+        brightness = min(brightness+20, 100)
+        led.glow(brightness)
+        user_control = True
+    print("led increase brightness")
+    return render_template(html)
+
+@app.route('/down')
+def led_decr_bright():
+    global user_control
+    global brightness
+    with led_lock:
+        brightness = max(brightness-20, 0)
+        led.glow(brightness)
+        user_control = True
+    print("led decrease brightness")
+    return render_template(html)
+"""
+
+@app.route('/setbrightness/<int:value>', methods=['POST'])
+def led_set_bright(value):
+    global user_control
+    global brightness
+    with led_lock:
+        try:
+            brightness = int(value)
+            led.glow(brightness)
+            user_control = True
+            print("led set brightness ", value)
+        except:
+            pass
+    return jsonify({'brightness': brightness})
+
+@app.route('/clockon')
+def clock_on():
+    global brightness
+    global user_control
+    with led_lock:
+        alarmclock.turnOn()
+        if (not user_control):
+            led.glow(int(brightness * alarmclock.getLightFactor()))
+    return render_template(html)
+
+@app.route('/clockoff')
+def clock_off():
+    global brightness
+    global user_control
+    with led_lock:
+        alarmclock.turnOff()
+        if (not user_control):
+            led.glow(brightness)
+    return render_template(html)
+
+@app.route('/sleep', methods=['POST'])
+def set_sleep_time():
+    global brightness
+    global user_control
+    timeval = request.form["time"]
+    if timeval == "":
+        print("got empty sleep time value")
+    else:
+        with led_lock:
+            alarmclock.setSleepTime(timeval)
+            if (not user_control):
+                led.glow(int(brightness * alarmclock.getLightFactor()))
+        #print("set sleep time", timeval)
+    return render_template(html)
+
+@app.route('/wake', methods=['POST'])
+def set_wake_time():
+    global brightness
+    global user_control
+    timeval = request.form["time"]
+    if timeval == "":
+        print("got empty wake time value")
+    else:
+        with led_lock:
+            alarmclock.setWakeTime(timeval)
+            if (not user_control):
+                led.glow(int(brightness * alarmclock.getLightFactor()))
+        #print("set wake time", timeval)
+    return render_template(html)
+
 
 @app.route('/illuminance')
 def get_illuminance():
     illuminance = lightmeter.get()
     return jsonify({'illuminance': illuminance})
+
+@app.route('/brightness')
+def get_brightness():
+    global brightness
+    return jsonify({'brightness': brightness})
+
+@app.route('/usercontrol')
+def get_usercontrol():
+    global user_control
+    if user_control:
+        return jsonify({'usercontrol': "user"})
+    else:
+        return jsonify({'usercontrol': "auto"})
+
+@app.route('/clockstate')
+def get_clock_state():
+    if (alarmclock.getState()):
+        return jsonify({'clockstate': "on"})
+    else:
+        return jsonify({'clockstate': "off"})
+
+@app.route('/sleeptime')
+def get_sleep_time():
+    timeval = alarmclock.getSleepTime()
+    return jsonify({'sleeptime': timeval})
+
+@app.route('/waketime')
+def get_wake_time():
+    timeval = alarmclock.getWakeTime()
+    return jsonify({'waketime': timeval})
 
 @app.route('/curtain/<int:state>', methods=['POST'])
 def set_curtain_state(state):
@@ -66,7 +202,8 @@ def lightRegulate(command:str) -> bool:
         try:
             print("[info] [voice control] action: \033[1;32;40mopen the light\033[0m")
             with led_lock:
-                led.glow(100)
+                brightness = 100
+                led.glow(brightness)
                 user_control = True
         except:
             print("[warning] [voice control] action: \033[1;31;40mopen light fail\033[0m")
@@ -76,7 +213,8 @@ def lightRegulate(command:str) -> bool:
         try:
             print("[info] [voice control] action: \033[1;31;40mclose the light\033[0m")
             with led_lock:
-                led.glow(0)
+                brightness = 0
+                led.glow(brightness)
                 user_control = True
         except:
             print("[warning] [voice control] action: \033[1;31;40mclose light fail\033[0m")
@@ -135,7 +273,7 @@ def auto_light(interval):
                 illumi = lightmeter.get()
                 brightness = illumi_to_bright(illumi)
                 print("[info] [auto bright] update: ", illumi, "lux to ", brightness, "led brightness")
-                led.glow(brightness)
+                led.glow(int(brightness * alarmclock.getLightFactor()))
 
     def set_interval(interval):
         try:
