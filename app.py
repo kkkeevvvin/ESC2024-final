@@ -26,6 +26,7 @@ user_control = False
 def index():
     return render_template(html)
 
+# open the light, switch to user mode
 @app.route('/on')
 def led_on():
     global user_control
@@ -37,6 +38,7 @@ def led_on():
     print("led on")
     return render_template(html)
 
+# close the light, switch to user mode
 @app.route('/off')
 def led_off():
     global user_control
@@ -48,6 +50,7 @@ def led_off():
     print("led off")
     return render_template(html)
 
+# switch to auto mode
 @app.route('/auto')
 def led_auto():
     global user_control
@@ -83,6 +86,7 @@ def led_decr_bright():
     return render_template(html)
 """
 
+# set led brightness, switch to user mode
 @app.route('/setbrightness/<int:value>', methods=['POST'])
 def led_set_bright(value):
     global user_control
@@ -97,6 +101,7 @@ def led_set_bright(value):
             pass
     return jsonify({'brightness': brightness})
 
+# turn on alarm clock, only work in auto mode
 @app.route('/clockon')
 def clock_on():
     global brightness
@@ -107,6 +112,7 @@ def clock_on():
             led.glow(int(brightness * alarmclock.getLightFactor()))
     return render_template(html)
 
+# turn off alarm clock
 @app.route('/clockoff')
 def clock_off():
     global brightness
@@ -117,6 +123,7 @@ def clock_off():
             led.glow(brightness)
     return render_template(html)
 
+# set the sleep time, led brightness start to decrease 10 minutes before sleep time
 @app.route('/sleep', methods=['POST'])
 def set_sleep_time():
     global brightness
@@ -132,6 +139,7 @@ def set_sleep_time():
         #print("set sleep time", timeval)
     return render_template(html)
 
+# set wake time, led brightness start to increase, full brightness after 10 minutes
 @app.route('/wake', methods=['POST'])
 def set_wake_time():
     global brightness
@@ -147,7 +155,7 @@ def set_wake_time():
         #print("set wake time", timeval)
     return render_template(html)
 
-
+# get states, update web display
 @app.route('/illuminance')
 def get_illuminance():
     illuminance = lightmeter.get()
@@ -183,17 +191,19 @@ def get_wake_time():
     timeval = alarmclock.getWakeTime()
     return jsonify({'waketime': timeval})
 
+# curtain control
 @app.route('/curtain/<int:state>', methods=['POST'])
 def set_curtain_state(state):
     with curtain_lock:
         curtain.to_state(state)
     return jsonify({'state': curtain.get_state()})
 
-
+# convert illuminance into led brightness
 def illumi_to_bright(illuminance):
     bright = max(min(int(100*(255 - illuminance)/255), 100), 0)
     return bright
 
+# led control function for voice control
 def lightRegulate(command:str) -> bool:
     global user_control
     global brightness
@@ -260,6 +270,7 @@ def lightRegulate(command:str) -> bool:
         pass
     return True
 
+# get enviroment light and using illumi_to_bright() to update led brightness every <interval> seconds
 def auto_light(interval):
     global brightness
     global led

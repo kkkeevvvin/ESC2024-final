@@ -8,17 +8,21 @@ class AlarmClock:
         self.sleepTime = datetime.time(0, 0)
         self.wakeTime = datetime.time(0, 0)
     
+    # enable the alarm clock control
     def turnOn(self):
         self.on = True
         print("[info] [clock] turn on")
 
+    # disable the alarm clock control
     def turnOff(self):
         self.on = False
         print("[info] [clock] turn off")
 
+    # return whether the alarm clock is enabled
     def getState(self):
         return self.on
 
+    # set the time when the light should turned off
     def setSleepTime(self, strtime:str):
         try:
             self.sleepTime = datetime.time.fromisoformat(strtime)
@@ -26,7 +30,7 @@ class AlarmClock:
         except:
             print("[warning] [clock] set sleep time fail")
 
-
+    # set the time when the light should be turned on 
     def setWakeTime(self, strtime:str):
         try:
             self.wakeTime = datetime.time.fromisoformat(strtime)
@@ -34,13 +38,14 @@ class AlarmClock:
         except:
             print("[warning] [clock] set wake time fail")
 
+    # return the time in str
     def getSleepTime(self):
         return self.sleepTime.strftime("%H:%M")
     
     def getWakeTime(self):
         return self.wakeTime.strftime("%H:%M")
     
-    # minutes until time to sleep
+    # minutes until light turn off
     def getTimeUntilSleep(self):
         n = datetime.datetime.now(self.tz).time()
         timeDelta = (self.sleepTime.minute + self.sleepTime.hour*60) - (n.minute + n.hour*60)
@@ -48,7 +53,7 @@ class AlarmClock:
             timeDelta += 24*60
         return timeDelta
 
-    # minutes after wake
+    # minutes after light turned on
     def getTimePassWake(self):
         n = datetime.datetime.now(self.tz).time()
         timeDelta = (n.minute + n.hour*60) - (self.wakeTime.minute + self.wakeTime.hour*60)
@@ -56,6 +61,7 @@ class AlarmClock:
             timeDelta += 24*60
         return timeDelta
     
+    # return whether the time is between sleep time and wake time
     def isSleeping(self) -> bool:
         sTime = self.sleepTime.minute + self.sleepTime.hour*60
         wTime = self.wakeTime.minute + self.wakeTime.hour*60
@@ -70,7 +76,10 @@ class AlarmClock:
         else:
             return True
         
-
+    # return a float 0 ~ 1 that adjust the led brightness in auto mode
+    # decrease from 1 to 0 within 10 minutes before sleep
+    # increase from 0 to 1 within 10 minutes after wake
+    # return 0 between sleep and wake time
     def getLightFactor(self) -> float:
         if (self.on):
             if (self.isSleeping()):
