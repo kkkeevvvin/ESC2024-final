@@ -11,6 +11,12 @@ class LED:
         print("[info] [led] initialized")
 
     def glow(self, brightness=100, seconds=2) -> None:
+        if (brightness > 100):
+            brightness = 100
+            print("[warning] [led] brightness over 100")
+        elif (brightness < 0):
+            brightness = 0
+            print("[warning] [led] brightness less then 0")
         f = self.freq * brightness / 100.0
         if (f > self.freq):
             f = self.freq

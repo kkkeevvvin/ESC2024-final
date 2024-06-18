@@ -58,7 +58,7 @@ def led_auto():
     with led_lock:
         user_control = False
         brightness = illumi_to_bright(lightmeter.get())
-        led.glow(brightness)
+        led.glow(int(brightness * alarmclock.getLightFactor()))
     print("led off")
     return render_template(html)
 
