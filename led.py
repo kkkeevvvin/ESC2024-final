@@ -1,40 +1,41 @@
 import RPi.GPIO as GPIO
-import time
 
 class LED:
-    def __init__(self, pin:int=12, freq:int=100) -> None:
+    def __init__(self, pin: int = 12, freq: int = 100) -> None:
         self.pin = pin
+        self.freq = freq
         GPIO.setmode(GPIO.BOARD)
         GPIO.setup(pin, GPIO.OUT)
-        self.freq = freq
-        self.light = GPIO.PWM(pin, freq)
+
+        self.pwm = GPIO.PWM(pin, freq)
+        self.pwm.start(0)
+        self.brightness = 0
         print("[info] [led] initialized")
 
-    def glow(self, brightness=100, seconds=2) -> None:
-        if (brightness > 100):
-            brightness = 100
-            print("[warning] [led] brightness over 100")
-        elif (brightness < 0):
-            brightness = 0
-            print("[warning] [led] brightness less then 0")
-        f = self.freq * brightness / 100.0
-        if (f > self.freq):
-            f = self.freq
-        self.light.start(f)
-        print("[info] [led] glow: ", f)
-        time.sleep(2)
+    def glow(self, brightness=100) -> None:
+        self.set_brightness(brightness)
+        self.pwm.ChangeDutyCycle(brightness)
+        print("[info] [led] glow: ", brightness)
 
-    def stop(self) -> None:
+    def set_brightness(self, brightness):
+        if 0 <= brightness <= 100:
+            self.brightness = brightness
+        else:
+            print("[error] [led] brightness should be in 0 ~ 100")
+
+    def get_brightness(self) -> int:
+        return self.brightness
+
+    def cleanup(self) -> None:
         print("[info] [led] stop")
-        self.light.stop()
-        pass
+        self.pwm.stop()
 
 if __name__ == "__main__":
-    led = LED(32, 100)
+    led = LED(32)
     try:
         while True:
             x = int(input("[test] enter a num: "))
             led.glow(x)
     except KeyboardInterrupt:
-        del led
+        led.cleanup()
         GPIO.cleanup()
