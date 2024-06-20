@@ -1,6 +1,5 @@
 import datetime
 
-
 class AlarmClock:
     def __init__(self, timezone:int) -> None:
         self.on = False
@@ -92,8 +91,6 @@ class AlarmClock:
                 return 1.0
         else:
             return 1.0
-        
-
 
 if __name__ == "__main__":
     tz = datetime.timezone(datetime.timedelta(hours=8))

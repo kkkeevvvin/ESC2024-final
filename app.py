@@ -16,76 +16,40 @@ curtain = StepperMotor()
 alarmclock = AlarmClock(8)
 html = "index.html"
 
-led_lock = threading.Lock()
-
-user_control = False
-
 @app.route('/')
 def index():
     return render_template(html)
 
-# open the light, switch to user mode
-@app.route('/on')
-def led_on():
-    global user_control
-    with led_lock:
-        led.glow(100)
-        user_control = True
-    print("led on")
-    return render_template(html)
-
-# close the light, switch to user mode
-@app.route('/off')
-def led_off():
-    global user_control
-    with led_lock:
-        led.glow(0)
-        user_control = True
-    print("led off")
-    return render_template(html)
-
 # switch to auto mode
 @app.route('/auto')
-def led_auto():
-    global user_control
-    with led_lock:
-        user_control = False
-        brightness = auto_bright(lightmeter.get())
-        led.glow(int(brightness * alarmclock.getLightFactor()))
-    print("led auto")
+def led_set_auto():
+    led.set_auto_control()
+    print("[info] [web] led auto")
+    return render_template(html)
+
+@app.route('/user')
+def led_set_user():
+    led.set_user_control()
+    print("[info] [web] led user")
     return render_template(html)
 
 # set led brightness, switch to user mode
-@app.route('/setbrightness/<int:value>', methods=['POST'])
-def led_set_bright(value):
-    global user_control
-    with led_lock:
-        try:
-            led.glow(int(value))
-            user_control = True
-            print("led set brightness ", value)
-        except:
-            pass
+@app.route('/setbrightness/<int:brightness>', methods=['POST'])
+def led_set_brightness(brightness):
+    led.glow(brightness)
+    print("[info] [web] led set brightness ", brightness)
     return jsonify({'brightness': led.get_brightness()})
 
 # turn on alarm clock, only work in auto mode
 @app.route('/clockon')
 def clock_on():
-    global user_control
-    with led_lock:
-        alarmclock.turnOn()
-        if not user_control:
-            led.glow(int(led.get_brightness() * alarmclock.getLightFactor()))
+    alarmclock.turnOn()
     return render_template(html)
 
 # turn off alarm clock
 @app.route('/clockoff')
 def clock_off():
-    global user_control
-    with led_lock:
-        alarmclock.turnOff()
-        if not user_control:
-            led.glow(led.get_brightness())
+    alarmclock.turnOff()
     return render_template(html)
 
 # set the sleep time, led brightness start to decrease 10 minutes before sleep time
@@ -95,10 +59,7 @@ def set_sleep_time():
     if timeval == "":
         print("got empty sleep time value")
     else:
-        with led_lock:
-            alarmclock.setSleepTime(timeval)
-            if not user_control:
-                led.glow(int(led.get_brightness() * alarmclock.getLightFactor()))
+        alarmclock.setSleepTime(timeval)
     return render_template(html)
 
 # set wake time, led brightness start to increase, full brightness after 10 minutes
@@ -108,10 +69,7 @@ def set_wake_time():
     if timeval == "":
         print("got empty wake time value")
     else:
-        with led_lock:
-            alarmclock.setWakeTime(timeval)
-            if not user_control:
-                led.glow(int(led.get_brightness() * alarmclock.getLightFactor()))
+        alarmclock.setWakeTime(timeval)
     return render_template(html)
 
 # get states, update web display
@@ -126,12 +84,13 @@ def get_brightness():
 
 @app.route('/usercontrol')
 def get_usercontrol():
-    global user_control
-    return jsonify({'usercontrol': "user" if user_control else "auto"})
+    state = "auto" if led.get_auto_control() else "user"
+    return jsonify({'usercontrol': state})
 
 @app.route('/clockstate')
 def get_clock_state():
-    return jsonify({'clockstate': "on" if alarmclock.getState() else "off"})
+    state = "on" if alarmclock.getState() else "off"
+    return jsonify({'clockstate': state})
 
 @app.route('/sleeptime')
 def get_sleep_time():
@@ -161,9 +120,7 @@ def lightRegulate(command: str) -> bool:
     if "kaideng" in command:
         try:
             print("[info] [voice control] action: \033[1;32;40mopen the light\033[0m")
-            with led_lock:
-                led.glow(100)
-                user_control = True
+            # led.glow(100)
         except:
             print("[warning] [voice control] action: \033[1;31;40mopen light fail\033[0m")
 
@@ -171,9 +128,7 @@ def lightRegulate(command: str) -> bool:
     elif "guandeng" in command:
         try:
             print("[info] [voice control] action: \033[1;31;40mclose the light\033[0m")
-            with led_lock:
-                led.glow(0)
-                user_control = True
+            led.glow(0)
         except:
             print("[warning] [voice control] action: \033[1;31;40mclose light fail\033[0m")
 
@@ -181,10 +136,7 @@ def lightRegulate(command: str) -> bool:
     elif "riguang" in command or "zidong" in command:
         try:
             print("[info] [voice control] action: \033[1;33;40mswitch to auto mode\033[0m")
-            with led_lock:
-                user_control = False
-                brightness = auto_bright(lightmeter.get())
-                led.glow(int(brightness * alarmclock.getLightFactor()))
+            led.set_auto_control()
         except:
             print("[warning] [voice control] action: \033[1;31;40mswitch mode fail\033[0m")
 
@@ -192,9 +144,7 @@ def lightRegulate(command: str) -> bool:
     elif "shengao" in command:
         try:
             print("[info] [voice control] action: \033[1;36;40mincrease brightness\033[0m")
-            with led_lock:
-                user_control = True
-                led.glow(min(led.get_brightness() + 20, 100))
+            # led.glow(min(led.get_brightness() + 20, 100))
         except:
             print("[warning] [voice control] action: \033[1;31;40mincrease brightness fail\033[0m")
 
@@ -202,9 +152,7 @@ def lightRegulate(command: str) -> bool:
     elif "jiangdi" in command:
         try:
             print("[info] [voice control] action: \033[1;34;40mdecrease brightness\033[0m")
-            with led_lock:
-                user_control = True
-                led.glow(max(led.get_brightness() - 20, 0))
+            # led.glow(max(led.get_brightness() - 20, 0))
         except:
             print("[warning] [voice control] action: \033[1;31;40mdecrease brightness fail\033[0m")
 
@@ -215,12 +163,10 @@ def lightRegulate(command: str) -> bool:
 # get enviroment light and using auto_bright() to update led brightness every <interval> seconds
 def auto_light(interval):
     def update_illumi():
-        with led_lock:
-            if not user_control:
-                illumi = lightmeter.get()
-                brightness = auto_bright(illumi)
-                print("[info] [auto bright] update: ", illumi, "lux to ", brightness, "led brightness")
-                led.glow(int(brightness * alarmclock.getLightFactor()))
+        illumi = lightmeter.get()
+        led.set_brightness(auto_bright(illumi))
+        print("[info] [auto bright] update: ", illumi, "lux to ", led.get_brightness(), "led brightness")
+        led.glow_with_factor(alarmclock.getLightFactor())
 
     def set_interval(interval):
         try:
@@ -240,4 +186,5 @@ if __name__ == '__main__':
         vc.startThread()
         app.run(host='0.0.0.0', port=5000)
     finally:
+        led.cleanup()
         GPIO.cleanup()
