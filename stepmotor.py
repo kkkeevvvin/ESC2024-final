@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import time
+import threading
 
 S_ = "[stepmotor] "
 S_info = "[info] " + S_
@@ -32,7 +33,9 @@ class StepperMotor:
 
         self.state_rotations = 0
         self.state_rotations_min = 0
-        self.state_rotations_max = 3200
+        self.state_rotations_max = 3000
+
+        self.lock = threading.Lock()
 
         print(S_info + "initialized")
 
@@ -68,14 +71,15 @@ class StepperMotor:
             self.forward(0.001, state_rotations_next - self.state_rotations)
 
     def to_state(self, state_next):
-        if state_next < self.state_min or state_next > self.state_max:
-            print(S_info + f"state range should be in range {self.state_min} ~ {self.state_max}.")
-            return
-        
-        state_rotations_next = state_next * int(self.state_rotations_max / self.state_max)
+        with self.lock:
+            if state_next < self.state_min or state_next > self.state_max:
+                print(S_info + f"state range should be in range {self.state_min} ~ {self.state_max}.")
+                return
+            
+            state_rotations_next = state_next * int(self.state_rotations_max / self.state_max)
 
-        self.to_state_rotations(state_rotations_next)
-        self.state = state_next
+            self.to_state_rotations(state_rotations_next)
+            self.state = state_next
 
     def get_state(self):
         return self.state

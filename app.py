@@ -16,7 +16,6 @@ curtain = StepperMotor()
 alarmclock = AlarmClock(8)
 html = "index.html"
 
-curtain_lock = threading.Lock()
 led_lock = threading.Lock()
 
 user_control = False
@@ -147,8 +146,7 @@ def get_wake_time():
 # curtain control
 @app.route('/curtain/<int:state>', methods=['POST'])
 def set_curtain_state(state):
-    with curtain_lock:
-        curtain.to_state(state)
+    curtain.to_state(state)
     return jsonify({'state': curtain.get_state()})
 
 # convert illuminance into led brightness
