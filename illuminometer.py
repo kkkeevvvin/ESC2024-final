@@ -8,6 +8,9 @@ from picamera2 import Picamera2
 class Illuminometer:
     def __init__(self):
         self.camera = Picamera2(0)
+        self.camera.set_controls({"ExposureTime": 1000})
+        self.camera.set_controls({"AwbEnable": False})
+        self.camera.set_controls({"AnalogueGain": 1.0})
         self.camera.start()
 
     def get(self):

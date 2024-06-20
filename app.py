@@ -57,7 +57,7 @@ def led_auto():
     global brightness
     with led_lock:
         user_control = False
-        brightness = illumi_to_bright(lightmeter.get())
+        brightness = auto_bright(lightmeter.get())
         led.glow(int(brightness * alarmclock.getLightFactor()))
     print("led off")
     return render_template(html)
@@ -198,10 +198,75 @@ def set_curtain_state(state):
         curtain.to_state(state)
     return jsonify({'state': curtain.get_state()})
 
-# convert illuminance into led brightness
-def illumi_to_bright(illuminance):
-    bright = max(min(int(100*(255 - illuminance)/255), 100), 0)
-    return bright
+class PID:
+    def __init__(self, P=1.0, I=0.0, D=0.0):
+        self.Kp = P
+        self.Ki = I
+        self.Kd = D
+        self.sample_time = 0.00
+        self.current_time = time.time()
+        self.last_time = self.current_time
+
+        self.clear()
+
+    def clear(self):
+        self.SetPoint = 0.0
+        self.PTerm = 0.0
+        self.ITerm = 0.0
+        self.DTerm = 0.0
+        self.last_error = 0.0
+
+        self.int_error = 0.0
+        self.windup_guard = 20.0
+        self.output = 0.0
+
+    def update(self, feedback_value):
+        error = self.SetPoint - feedback_value
+
+        self.current_time = time.time()
+        delta_time = self.current_time - self.last_time
+        delta_error = error - self.last_error
+
+        if delta_time >= self.sample_time:
+            self.PTerm = self.Kp * error
+            self.ITerm += error * delta_time
+
+            if self.ITerm < -self.windup_guard:
+                self.ITerm = -self.windup_guard
+            elif self.ITerm > self.windup_guard:
+                self.ITerm = self.windup_guard
+
+            self.DTerm = 0.0
+            if delta_time > 0:
+                self.DTerm = delta_error / delta_time
+
+            self.last_time = self.current_time
+            self.last_error = error
+
+            self.output = self.PTerm + (self.Ki * self.ITerm) + (self.Kd * self.DTerm)
+
+    def setKp(self, proportional_gain):
+        self.Kp = proportional_gain
+
+    def setKi(self, integral_gain):
+        self.Ki = integral_gain
+
+    def setKd(self, derivative_gain):
+        self.Kd = derivative_gain
+
+    def setWindup(self, windup):
+        self.windup_guard = windup
+
+    def setSampleTime(self, sample_time):
+        self.sample_time = sample_time
+
+pid = PID(P=0.005, I=0.035, D=0.001)  # Adjust PID constants as needed
+pid.SetPoint = 150 # Target illuminance
+
+def auto_bright(illuminance):
+    pid.update(illuminance)
+    brightness = max(min(int(100 * pid.output), 100), 0)
+    return brightness
 
 # led control function for voice control
 def lightRegulate(command:str) -> bool:
@@ -235,7 +300,7 @@ def lightRegulate(command:str) -> bool:
             print("[info] [voice control] action: \033[1;33;40mswitch to auto mode\033[0m")
             with led_lock:
                 user_control = False
-                brightness = illumi_to_bright(lightmeter.get())
+                brightness = auto_bright(lightmeter.get())
                 led.glow(int(brightness * alarmclock.getLightFactor()))
         except:
             print("[warning] [voice control] action: \033[1;31;40mswitch mode fail\033[0m")
@@ -270,7 +335,7 @@ def lightRegulate(command:str) -> bool:
         pass
     return True
 
-# get enviroment light and using illumi_to_bright() to update led brightness every <interval> seconds
+# get enviroment light and using auto_bright() to update led brightness every <interval> seconds
 def auto_light(interval):
     global brightness
     global led
@@ -282,7 +347,7 @@ def auto_light(interval):
         with led_lock:
             if (not user_control):
                 illumi = lightmeter.get()
-                brightness = illumi_to_bright(illumi)
+                brightness = auto_bright(illumi)
                 print("[info] [auto bright] update: ", illumi, "lux to ", brightness, "led brightness")
                 led.glow(int(brightness * alarmclock.getLightFactor()))
 
